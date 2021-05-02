@@ -1,4 +1,5 @@
 import os
+import argparse
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
@@ -24,13 +25,13 @@ class NLOSScene():
         print(f"Reading {path} into {path_split[-1]}...")
         setattr(self, path_split[-1], np.squeeze(np.array(self.hf.get(path))).transpose())
 
-    def phasor_pulse_convolution(self, wavelength: float, times: int, show_plot: bool = False, use_cache: bool = True):
+    def phasor_pulse_convolution(self, wavelength: float, cycle_times: int, show_plot: bool = False, use_cache: bool = True):
 
         if use_cache:
             # check if we have pre-computed this wavelength and times for this request
             tm_start = time.perf_counter()
             fname = os.path.join(os.path.dirname(self.matfile),
-                        f"{os.path.basename(self.matfile)[:-4]}_{wavelength:.6f}_{times}.npy")
+                        f"{os.path.basename(self.matfile)[:-4]}_{wavelength:.6f}_{cycle_times}.npy")
             if os.path.exists(fname):
                 with open(fname, 'rb') as f:
                     P = np.load(f)
@@ -38,9 +39,9 @@ class NLOSScene():
                     print(f"loaded from cached file in {tm_stop-tm_start:.6f} seconds")
                     return P
 
-        pulse_size = np.round((times * wavelength) / self.deltat)
+        pulse_size = np.round((cycle_times * wavelength) / self.deltat)
         cycle_size = np.round(wavelength / self.deltat)
-        sigma = times * wavelength / 6
+        sigma = cycle_times * wavelength / 6
         t = self.deltat * (np.arange(1,pulse_size+1) - pulse_size / 2)
 
         gaussian_pulse = np.exp(-(t * t) / (2 * sigma * sigma))
@@ -123,28 +124,47 @@ class NLOSReconstruction():
         print(f'Reconstructed {self.nvoxels} in {tm_end-tm_start:.6f} sec')
 
 def main():
-    scene_name = 'officescene'
-    scene = NLOSScene(f'../DataCode_Phasor_Field_VWNLOS/Datasets/{scene_name}.mat')
-    lambda_times = 32
-    cycle_times = 4
-    wavelength = lambda_times * 2 * scene.sampling_grid_spacing
-    gridsize = wavelength / 4
+    parser = argparse.ArgumentParser(description='Performs NLOS Backprojection to reconstruct a NLOS scene')
+    parser.add_argument('infile', help='the *.mat file that contains the input dataset')
+    parser.add_argument('-r', '--resolution', type=float, default=0.16, help='the reconstruction resolution (in meters)')
+    parser.add_argument('-o', '--outfile', required=False, default=None, help='filename to save the reconstructed cube (in numpy format)')
+    parser.add_argument('-np', '--noplot', action='store_true', help='do not plot output')
+    args = parser.parse_args()
 
-    P = scene.phasor_pulse_convolution(wavelength, cycle_times, use_cache=False, show_plot=True)
+    if len(args.infile) < 4 or args.infile[-4:].lower() != '.mat' or not os.path.exists(args.infile):
+        raise Exception('Invalid infile argument.')
+    if args.resolution < 0.01:
+        raise Exception('Invalid resolution argument.')
+    
+
+    scene_name = os.path.basename(args.infile)[:-4]
+    # scene = NLOSScene(f'../DataCode_Phasor_Field_VWNLOS/Datasets/{scene_name}.mat')
+    scene = NLOSScene(args.infile)
+
+    gridsize = args.resolution
+    lambda_times = 2 * gridsize / scene.sampling_grid_spacing
+    wavelength = lambda_times * 2 * scene.sampling_grid_spacing
+
+    print(f'Generating phasor field for reconstruction resolution {args.resolution}...')
+    P = scene.phasor_pulse_convolution(wavelength, cycle_times=4, use_cache=True, show_plot=False)
 
     tm_start = time.perf_counter()
     R = NLOSReconstruction(scene, P, gridsize)
 
-    np.save(f'{scene_name}_{gridsize:.6f}_W.npy', R.voxels)
-
     tm_end = time.perf_counter()
     print(f'Reconstruction took {tm_end-tm_start:.6f} sec')
 
-    img = np.max(R.voxels, axis=2)
-    img = np.flip(np.flip(img, axis=0), axis=1).transpose()
-    
-    plt.imshow(img)
-    plt.show()
+    if args.outfile is None:
+        args.outfile = f'{scene_name}_{gridsize:.6f}_W.npy'
+    np.save(args.outfile, R.voxels)
+    print(f"'Saved reconstructed cube to '{args.outfile}'")
+
+    if not args.noplot:
+        img = np.max(R.voxels, axis=2)
+        img = np.flip(np.flip(img, axis=0), axis=1).transpose()
+        
+        plt.imshow(img)
+        plt.show()
     
 if __name__ == '__main__':
     main()

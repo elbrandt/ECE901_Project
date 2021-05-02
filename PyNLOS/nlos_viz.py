@@ -3,9 +3,11 @@ import scipy.io
 import numpy as np
 import cv2
 from functools import partial
+import argparse
+import os
+import textwrap
 
-
-threshold = 2.6e6
+threshold = 0.0
 voxels = None
 clrs = None
 maxvals = None
@@ -14,6 +16,7 @@ pc = None
 oct = None
 oct_max_depth = 0
 mult_factor = 10.0
+orig_view_params = None
 
 
 def main():
@@ -24,9 +27,32 @@ def main():
     global maxidxs
     global pc
     global oct
+    global orig_view_params
 
-    matW = scipy.io.loadmat('../DataCode_Phasor_Field_VWNLOS/Datasets/officescene_W.mat')
-    W = np.array(matW['W'])
+    parser = argparse.ArgumentParser(description='Visualize a 3D NLOS Cube', formatter_class=argparse.RawDescriptionHelpFormatter, epilog=textwrap.dedent('''\
+        While Running:
+          T: Increase Threshold
+          t: Decrease Threshold
+          S: Increase threshold scaling factor
+          s: Decrease threshold scaling factor
+          O: Toggle Octree visualization On/Off
+          D: Increase Octree depth
+          d: Decrease Octree depth
+          r: Reset view
+    '''))
+    parser.add_argument('infile', help='the *.mat or *.npy file that contains the reconstruction')
+    args = parser.parse_args()
+
+    if not os.path.exists(args.infile):
+        raise Exception('Invalid infile argument.')
+
+    if len(args.infile) > 4 and args.infile[-4:].lower() == '.mat':
+        matW = scipy.io.loadmat(args.infile)
+        W = np.array(matW['W'])
+    else:
+        W = np.load(args.infile)
+        W = np.transpose(W, (1, 0, 2))
+        W = np.flip(W, (0, 1))
 
     # apply colormap
     maxvals = np.max(W, axis=2)
@@ -48,17 +74,18 @@ def main():
     coord_sys = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10.0)
     geom.append(coord_sys)
     geom.append(wireframe_box(size=[W.shape[0], W.shape[1], -W.shape[2]]))
-    print(f'Rendering {len(geom)-2} voxels...')
 
     vis = o3d.visualization.VisualizerWithKeyCallback()
     vis.register_key_action_callback(ord("T"), adjust_threshold)
     vis.register_key_action_callback(ord("S"), adjust_mult_factor)
     vis.register_key_action_callback(ord("O"), toggle_octree)
     vis.register_key_action_callback(ord("D"), adjust_octree_depth)
-    vis.create_window(window_name='Officescene')
+    vis.register_key_action_callback(ord("R"), lambda v,a,m: vis.get_view_control().convert_from_pinhole_camera_parameters(orig_view_params))
+    vis.create_window(window_name=os.path.basename(args.infile))
     for g in geom:
         vis.add_geometry(g)
 
+    orig_view_params = vis.get_view_control().convert_to_pinhole_camera_parameters()
     while vis.poll_events():
         vis.update_renderer()
 
