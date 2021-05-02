@@ -1,7 +1,5 @@
 # ECE901_Project: On the Possibility of NLOS Imaging Using Spatial Decomposition
 
-![Image of Octree NLOS Reconstruction](https://github.com/elbrandt/ECE901_Project/blob/main/Paper/images/officescene_octree.PNG)
-
 ## Installation
 
 ### Set up Python environment (using Conda)
@@ -73,3 +71,6 @@ Example visualization:
 ```
 (pynlos) $ python nlos_viz.py my_scene.npy
 ```
+
+![Image of Octree NLOS Reconstruction](https://github.com/elbrandt/ECE901_Project/blob/main/Paper/images/officescene_octree.PNG)
+
