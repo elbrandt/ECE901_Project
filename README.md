@@ -71,6 +71,7 @@ Example visualization:
 ```
 (pynlos) $ python nlos_viz.py my_scene.npy
 ```
+*after some interaction with the view:*
 
 ![Image of Octree NLOS Reconstruction](https://github.com/elbrandt/ECE901_Project/blob/main/Paper/images/officescene_octree.PNG)
 
