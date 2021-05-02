@@ -11,7 +11,7 @@ $ conda activate pynlos
 
 ### Download Dataset:
 
-The datasets used in this project can be found [here](https://doi.org/10.6084/m9.figshare.8084987).
+The datasets used in this project can be downloaded from [https://doi.org/10.6084/m9.figshare.8084987](https://doi.org/10.6084/m9.figshare.8084987).
 
 ## Reconstructing at a particular resolution
 Show help:
