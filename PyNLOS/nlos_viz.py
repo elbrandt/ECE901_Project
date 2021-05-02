@@ -49,16 +49,15 @@ def main():
     if len(args.infile) > 4 and args.infile[-4:].lower() == '.mat':
         matW = scipy.io.loadmat(args.infile)
         W = np.array(matW['W'])
+        W = np.flip(np.transpose(W, [1, 0, 2]), 1)
     else:
         W = np.load(args.infile)
-        W = np.transpose(W, (1, 0, 2))
-        W = np.flip(W, (0, 1))
+        W = np.flip(W, 0)
 
     # apply colormap
     maxvals = np.max(W, axis=2)
     clrs = (maxvals / np.max(maxvals) * 255.0).astype(np.uint8)
     clrs = cv2.applyColorMap(clrs, 11).astype(np.float) / 255.0
-
 
     ix,iy,iz = np.indices((W.shape[0]+1, W.shape[1]+1,W.shape[2]+1))
     voxels = np.full_like(W, False, dtype=np.bool)
@@ -71,7 +70,7 @@ def main():
 
     geom.append(pc)
 
-    coord_sys = o3d.geometry.TriangleMesh.create_coordinate_frame(size=10.0)
+    coord_sys = o3d.geometry.TriangleMesh.create_coordinate_frame(size=voxels.shape[0]/20.0)
     geom.append(coord_sys)
     geom.append(wireframe_box(size=[W.shape[0], W.shape[1], -W.shape[2]]))
 
@@ -190,11 +189,12 @@ def adjust_octree_depth(vis, action, modifier):
 
 def build_octree(pc):
     global oct_max_depth
+    global voxels
 
     oct = o3d.geometry.Octree(max_depth=oct_max_depth)
     oct.convert_from_point_cloud(pc)
     
-    info = OctreeInfo(oct, pc)
+    info = OctreeInfo(oct, pc, voxels.shape)
     print(info)
 
     return oct
@@ -212,10 +212,11 @@ def build_pointcloud():
     for x in range(voxels.shape[0]):
        for y in range(voxels.shape[1]):
            if maxvals[x,y] > threshold:
-               points.append([y, 250-x, -maxidxs[x,y]])
+               # points.append([y, voxels.shape[0]-x, -maxidxs[x,y]])
+               points.append([x, y, -maxidxs[x,y]])
                colors.append(clrs[x,y,:])
 
-    print(f'Number of voxels: {len(points)}')
+    print(f'Number of voxels (non-empty/all): {len(points)}/{np.prod(voxels.shape)}')
     pc = o3d.geometry.PointCloud()
     pc.points = o3d.utility.Vector3dVector(points)
     pc.colors = o3d.utility.Vector3dVector(colors)
@@ -258,7 +259,7 @@ def wireframe_box(size=[1,1,1], origin=[0,0,0], color=[1,0,0]):
     return line_set
 
 class OctreeInfo():
-    def __init__(self, oct: o3d.geometry.Octree, pc: o3d.geometry.PointCloud):
+    def __init__(self, oct: o3d.geometry.Octree, pc: o3d.geometry.PointCloud, dims: list):
         self.oct = oct
         self.pc = pc
         self.max_depth = 0
@@ -267,6 +268,7 @@ class OctreeInfo():
         self.num_empty_internal = 0
         self.num_internal = 0
         self._traverse(oct.root_node, 0)
+        self.num_voxels = np.prod(dims)
 
     def __str__(self):
         ret = f'Octree Info:\n'
@@ -277,7 +279,7 @@ class OctreeInfo():
         if self.pc is not None and not self.pc.is_empty():
             ret += f' all in leaf       : {self.num_leafs == len(self.pc.points)}\n'
         ret += f' num_reconstructed : {self.num_visited}\n'
-        ret += f' % reconstructed   : {self.num_visited / (250*250*200) * 100:.2f}% ({self.num_visited}/{250*250*200})\n'
+        ret += f' % reconstructed   : {self.num_visited / self.num_voxels * 100:.2f}% ({self.num_visited}/{self.num_voxels})\n'
         return ret
     
     def _traverse(self, node, cur_depth):

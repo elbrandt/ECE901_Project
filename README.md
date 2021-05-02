@@ -39,8 +39,9 @@ optional arguments:
 Example reconstruction:
 
 ```
-(pynlos) $ python Backproj.py officescene.mat -r 0.16 -o my_scene.npy
+(pynlos) $ python Backproj.py officescene.mat -r 0.01 -o my_scene.npy
 ```
+*(then, wait a while for a resolution of 1cm...the current implementation is single threaded)*
 
 ## Exploring a 3D Reconstruction
 
@@ -70,5 +71,5 @@ While Running:
 
 Example visualization:
 ```
-(pynlos) $ python nlos_viz.py officescene_0.010000_W.npy
+(pynlos) $ python nlos_viz.py my_scene.npy
 ```
