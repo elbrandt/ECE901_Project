@@ -41,6 +41,8 @@ Example reconstruction:
 ```
 *(then, wait a while for a resolution of 1cm...the current implementation is single threaded)*
 
+![Image of 2D NLOS Reconstruction](https://github.com/elbrandt/ECE901_Project/blob/main/Paper/images/officescene_0.01.PNG)
+
 ## Exploring a 3D Reconstruction
 
 Show help:
