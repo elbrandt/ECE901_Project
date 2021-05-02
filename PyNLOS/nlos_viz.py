@@ -212,7 +212,6 @@ def build_pointcloud():
     for x in range(voxels.shape[0]):
        for y in range(voxels.shape[1]):
            if maxvals[x,y] > threshold:
-               # points.append([y, voxels.shape[0]-x, -maxidxs[x,y]])
                points.append([x, y, -maxidxs[x,y]])
                colors.append(clrs[x,y,:])
 
