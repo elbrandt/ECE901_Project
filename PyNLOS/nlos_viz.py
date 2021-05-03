@@ -80,7 +80,7 @@ def main():
     vis.register_key_action_callback(ord("O"), toggle_octree)
     vis.register_key_action_callback(ord("D"), adjust_octree_depth)
     vis.register_key_action_callback(ord("R"), lambda v,a,m: vis.get_view_control().convert_from_pinhole_camera_parameters(orig_view_params))
-    vis.create_window(window_name=os.path.basename(args.infile))
+    vis.create_window(window_name=os.path.basename(args.infile), width=640, height=480)
     for g in geom:
         vis.add_geometry(g)
 
